@@ -11,13 +11,23 @@ typedef struct se {
         POLYNOMAL = 2,
         RADIAL_BASIS_FUNCTION = 3
     };
-
-
 } Setup;
 static Setup *setAddress;
 
-void Initialize(Setup *set) {
+typedef struct eq {
+    double **K;
+    double k0[2];
+
+} Equation;
+static Equation *eqAddress;
+
+
+void Initialize(Setup *set, Equation *eq) {
+    // static address
     setAddress = set;
+    eqAddress = eq;
+    // default
+
 }
 
 
@@ -34,16 +44,15 @@ double kernel(double *x, double *y) {
 
 // K mátrix lekérdezése
 double** get_K_matrix(double points[][3], int length) {
-    double** K = (double**)malloc(length * sizeof(double*));
+    eqAddress->K = (double**)malloc(length * sizeof(double*));
     for (int i = 0; i < length; ++i) {
-        K[i] = (double*)malloc(length * sizeof(double));
+       eqAddress-> K[i] = (double*)malloc(length * sizeof(double));
         for (int j = 0; j < length; ++j) {
-            K[i][j] = kernel(points[i], points[j]) * (2 * points[i][2] - 1) * (2 * points[j][2] - 1);
+            eqAddress->K[i][j] = kernel(points[i], points[j]) * (2 * points[i][2] - 1) * (2 * points[j][2] - 1);
         }
     }
-    return K;
+    return eqAddress->K;
 }
-
 
 double** getKMatrix(double **points, int size) {
     if (size < 1)
@@ -63,11 +72,21 @@ double** getKMatrix(double **points, int size) {
     return K;
 }
 
+double * getk0(double *lambdas, int idxM, int idxL) {
+    eqAddress->k0[0] = eqAddress->k0[1] = 1.0;
+    for (int i = 0; i < sizeof(lambdas[0])/sizeof(double *); ++i) {
+        eqAddress->k0[0] -= lambdas[i] * eqAddress->K[idxM][i];
+        eqAddress->k0[1] -= lambdas[i] * eqAddress->K[idxL][i];
+    }
+
+}
+
 int main()
 {
     // Init
     Setup set;
-    Initialize(&set);
+    Equation eq;
+    Initialize(&set, &eq);
 
     // Setup
     set.kernelType = LINEAR;
